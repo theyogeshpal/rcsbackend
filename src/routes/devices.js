@@ -72,7 +72,6 @@ router.delete('/:deviceId', requireAuth, async (req, res) => {
     const { deviceId } = req.params;
     const deleted = await Device.findOneAndDelete({ deviceId });
     if (!deleted) return res.status(404).json({ error: 'Device not found' });
-    loadBalancer.removeDevice(deviceId);
     res.json({ success: true, message: 'Device deleted' });
   } catch (err) {
     res.status(500).json({ error: err.message });
