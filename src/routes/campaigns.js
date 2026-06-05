@@ -129,4 +129,20 @@ router.post('/:id/retry', async (req, res) => {
   }
 });
 
+router.delete('/:id', async (req, res) => {
+  try {
+    const campaignId = req.params.id;
+    const campaign = await Campaign.findByIdAndDelete(campaignId);
+    if (!campaign) return res.status(404).json({ error: 'Campaign not found' });
+
+    // Also delete associated feedback logs to clean up space
+    await Feedback.deleteMany({ campaignId });
+    
+    res.json({ success: true, message: 'Campaign deleted successfully' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;
