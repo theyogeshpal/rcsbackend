@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { Device } from '../models/Device.js';
 import { loadBalancer } from '../services/loadBalancer.js';
+import { requireAuth } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -64,6 +65,18 @@ router.get('/active', async (_req, res) => {
     devices,
     workloadMap: loadBalancer.getWorkloadMap(),
   });
+});
+
+router.delete('/:deviceId', requireAuth, async (req, res) => {
+  try {
+    const { deviceId } = req.params;
+    const deleted = await Device.findOneAndDelete({ deviceId });
+    if (!deleted) return res.status(404).json({ error: 'Device not found' });
+    loadBalancer.removeDevice(deviceId);
+    res.json({ success: true, message: 'Device deleted' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 export default router;
