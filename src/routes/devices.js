@@ -59,7 +59,8 @@ router.post('/heartbeat', async (req, res) => {
 });
 
 router.get('/active', async (_req, res) => {
-  const devices = await Device.find({ isActive: true }).sort({ createdAt: 1 });
+  const cutoff = new Date(Date.now() - 120000); // 2 minutes heartbeat cutoff
+  const devices = await Device.find({ isActive: true, lastHeartbeat: { $gte: cutoff } }).sort({ createdAt: 1 });
   loadBalancer.syncFromDevices(devices);
   res.json({
     devices,
