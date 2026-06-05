@@ -4,6 +4,7 @@ import { enqueueCampaign } from '../queues/campaignQueue.js';
 import { config } from '../config.js';
 import { processCampaignById } from '../services/campaignProcessor.js';
 import { requireAuth } from '../middleware/auth.js';
+import { Feedback } from '../models/Feedback.js';
 
 const router = Router();
 
@@ -72,6 +73,60 @@ router.get('/:id', async (req, res) => {
   const campaign = await Campaign.findById(req.params.id);
   if (!campaign) return res.status(404).json({ error: 'Not found' });
   res.json(campaign);
+});
+
+router.post('/:id/retry', async (req, res) => {
+  try {
+    const campaign = await Campaign.findById(req.params.id);
+    if (!campaign) return res.status(404).json({ error: 'Campaign not found' });
+
+    if (campaign.status === 'processing' || campaign.status === 'queued') {
+      return res.status(400).json({ error: 'Campaign is currently in progress' });
+    }
+
+    if (campaign.status === 'failed') {
+      campaign.status = 'queued';
+      await campaign.save();
+      await scheduleCampaign(campaign._id);
+      return res.json({ success: true, message: 'Campaign queued for retry', newCampaignId: campaign._id });
+    }
+
+    const feedbacks = await Feedback.find({ campaignId: campaign._id }).sort({ createdAt: -1 });
+    const numberStatus = new Map();
+    for (const f of feedbacks) {
+      if (!numberStatus.has(f.phoneNumber)) {
+        numberStatus.set(f.phoneNumber, f.status);
+      }
+    }
+
+    const failedNumbers = [];
+    for (const n of campaign.numbers) {
+      const status = numberStatus.get(n);
+      if (status === 'failed' || !status) {
+        failedNumbers.push(n);
+      }
+    }
+
+    if (failedNumbers.length === 0) {
+      return res.status(400).json({ error: 'No failed numbers found to retry' });
+    }
+
+    const retryCampaign = await Campaign.create({
+      name: campaign.name.endsWith(' (Retry)') ? campaign.name : `${campaign.name} (Retry)`,
+      text: campaign.text,
+      imageUrl: campaign.imageUrl || '',
+      numbers: failedNumbers,
+      status: 'queued',
+      stats: { total: failedNumbers.length, sent: 0, failed: 0, pending: failedNumbers.length },
+      createdBy: req.admin?.username || 'admin',
+    });
+
+    await scheduleCampaign(retryCampaign._id);
+    res.status(201).json({ success: true, message: 'Retry campaign created', newCampaignId: retryCampaign._id });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 export default router;
