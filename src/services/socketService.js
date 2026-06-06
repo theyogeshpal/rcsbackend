@@ -18,12 +18,15 @@ export function initSocket(server) {
       activeSockets.set(socket.id, deviceId);
       socket.deviceId = deviceId;
       
-      // Update device in DB
+      // Count devices to generate label if new
+      const count = await Device.countDocuments();
+      const label = `Device ${count + 1}`;
+
       await Device.findOneAndUpdate(
         { deviceId },
         { 
           $set: { isActive: true, lastHeartbeat: new Date(), phoneModel: phoneModel || 'Unknown' },
-          $setOnInsert: { createdBy: 'system' }
+          $setOnInsert: { createdBy: 'system', label }
         },
         { upsert: true }
       ).catch(err => console.error('[Socket] error updating device:', err));
