@@ -6,7 +6,7 @@ import { config } from '../config.js';
 let io;
 const activeSockets = new Map(); // socket.id -> deviceId
 
-const subClient = new Redis(config.redisUrl);
+const subClient = new Redis(config.redisUrl, { enableOfflineQueue: false, maxRetriesPerRequest: null });
 subClient.subscribe('dispatch_campaign').catch(console.error);
 
 subClient.on('message', (channel, message) => {

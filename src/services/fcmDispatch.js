@@ -1,7 +1,7 @@
 import Redis from 'ioredis';
 import { config } from '../config.js';
 
-const redis = new Redis(config.redisUrl);
+const redis = new Redis(config.redisUrl, { enableOfflineQueue: false, maxRetriesPerRequest: null });
 
 export async function dispatchParallel(batches) {
   // Publish to Redis so the web server process can emit via Socket.io

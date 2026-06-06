@@ -8,7 +8,11 @@ let _queue = null;
 function getQueue() {
   if (!_queue) {
     _queue = new Queue(CAMPAIGN_QUEUE_NAME, {
-      connection: { url: config.redisUrl },
+      connection: { 
+        url: config.redisUrl,
+        maxRetriesPerRequest: null,
+        enableOfflineQueue: false,
+      },
       defaultJobOptions: {
         attempts: 3,
         backoff: { type: 'exponential', delay: 5000 },
