@@ -26,7 +26,7 @@ app.use(express.json({ limit: '50mb' }));
 app.use('/uploads', express.static(config.uploadsDir));
 
 app.get('/health', (_req, res) => {
-  res.json({ ok: true, service: 'rcs-campaign-backend', project: config.firebaseProjectId });
+  res.json({ ok: true, service: 'rcs-campaign-backend' });
 });
 
 app.use('/api/auth', authRouter);
