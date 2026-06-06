@@ -14,8 +14,7 @@ export async function processCampaignById(campaignId) {
   const cutoff = new Date(Date.now() - config.deviceHeartbeatTtlMs);
   const devices = await Device.find({
     isActive: true,
-    lastHeartbeat: { $gte: cutoff },
-    fcmToken: { $exists: true, $ne: '' },
+    lastHeartbeat: { $gte: cutoff }
   });
 
   const active = loadBalancer.syncFromDevices(devices);

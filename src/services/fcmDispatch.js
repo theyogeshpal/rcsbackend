@@ -1,60 +1,18 @@
-import admin from 'firebase-admin';
-import { readFileSync, existsSync } from 'fs';
+import { emitToDevice } from './socketService.js';
 import { config } from '../config.js';
 
-let initialized = false;
-
-function loadServiceAccount() {
-  if (config.firebaseServiceAccountJson) {
-    return JSON.parse(config.firebaseServiceAccountJson);
-  }
-  if (existsSync(config.firebaseServiceAccountPath)) {
-    return JSON.parse(readFileSync(config.firebaseServiceAccountPath, 'utf8'));
-  }
-  return null;
-}
-
-function initFirebase() {
-  if (initialized) return;
-  const serviceAccount = loadServiceAccount();
-  if (!serviceAccount) {
-    console.warn('[FCM] Firebase credentials missing — set FIREBASE_SERVICE_ACCOUNT_JSON on Render.');
-    return;
-  }
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-    projectId: config.firebaseProjectId,
-  });
-  initialized = true;
-  console.log('[FCM] Firebase initialized:', config.firebaseProjectId);
-}
-
 export async function dispatchParallel(batches) {
-  initFirebase();
-  if (!initialized) {
-    return batches.map((b) => ({
-      deviceId: b.deviceId,
-      success: false,
-      error: 'Firebase not initialized',
-    }));
-  }
-
-  const messaging = admin.messaging();
-
+  // We no longer use Firebase. We emit using socketService.
   const results = await Promise.allSettled(
-    batches.map(async ({ deviceId, fcmToken, payload }) => {
-      const data = {};
-      for (const [k, v] of Object.entries(payload)) {
-        data[k] = typeof v === 'string' ? v : JSON.stringify(v);
+    batches.map(async ({ deviceId, payload }) => {
+      // payload has campaignId, text, imageUrl, assignedNumbersList
+      const sent = emitToDevice(deviceId, 'CAMPAIGN_EXECUTE', payload);
+      
+      if (sent) {
+        return { deviceId, success: true };
+      } else {
+        throw new Error('Device not connected via WebSocket');
       }
-
-      await messaging.send({
-        token: fcmToken,
-        data,
-        android: { priority: 'high' },
-      });
-
-      return { deviceId, success: true };
     })
   );
 
@@ -69,12 +27,13 @@ export async function dispatchParallel(batches) {
 }
 
 export function buildDevicePayload({ campaignId, text, imageUrl, assignedNumbersList }) {
+  // WebSockets can handle complex objects natively, no need to stringify arrays.
   return {
     type: 'CAMPAIGN_EXECUTE',
     campaignId,
     text,
     imageUrl: imageUrl || '',
-    assignedNumbersList: JSON.stringify(assignedNumbersList),
-    cooldownMs: String(config.cooldownMs),
+    assignedNumbersList, // Array
+    cooldownMs: config.cooldownMs,
   };
 }
