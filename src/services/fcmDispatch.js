@@ -1,17 +1,19 @@
-import { emitToDevice } from './socketService.js';
+import Redis from 'ioredis';
 import { config } from '../config.js';
 
+const redis = new Redis(config.redisUrl);
+
 export async function dispatchParallel(batches) {
-  // We no longer use Firebase. We emit using socketService.
+  // Publish to Redis so the web server process can emit via Socket.io
   const results = await Promise.allSettled(
     batches.map(async ({ deviceId, payload }) => {
-      // payload has campaignId, text, imageUrl, assignedNumbersList
-      const sent = emitToDevice(deviceId, 'CAMPAIGN_EXECUTE', payload);
+      const msg = JSON.stringify({ deviceId, payload });
+      const subscribers = await redis.publish('dispatch_campaign', msg);
       
-      if (sent) {
+      if (subscribers > 0) {
         return { deviceId, success: true };
       } else {
-        throw new Error('Device not connected via WebSocket');
+        throw new Error('Web server not subscribed to Redis');
       }
     })
   );
