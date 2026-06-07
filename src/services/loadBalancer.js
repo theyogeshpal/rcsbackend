@@ -11,7 +11,7 @@ export class LoadBalancer {
 
   syncFromDevices(devices) {
     this.#workloadMap.clear();
-    const active = devices.filter((d) => d.isActive && d.fcmToken);
+    const active = devices.filter((d) => d.isActive);
     for (const d of active) {
       this.#workloadMap.set(d.deviceId, {
         assigned: d.workload?.assigned ?? 0,
