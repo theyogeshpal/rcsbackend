@@ -8,13 +8,8 @@ export async function dispatchParallel(batches) {
   const results = await Promise.allSettled(
     batches.map(async ({ deviceId, payload }) => {
       const msg = JSON.stringify({ deviceId, payload });
-      const subscribers = await redis.publish('dispatch_campaign', msg);
-      
-      if (subscribers > 0) {
-        return { deviceId, success: true };
-      } else {
-        throw new Error('Web server not subscribed to Redis');
-      }
+      await redis.publish('dispatch_campaign', msg);
+      return { deviceId, success: true };
     })
   );
 
