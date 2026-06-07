@@ -75,6 +75,17 @@ router.get('/:id', async (req, res) => {
   res.json(campaign);
 });
 
+router.get('/:id/logs', async (req, res) => {
+  try {
+    const logs = await Feedback.find({ campaignId: req.params.id })
+      .sort({ createdAt: -1 })
+      .lean();
+    res.json(logs);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.post('/:id/retry', async (req, res) => {
   try {
     const campaign = await Campaign.findById(req.params.id);
