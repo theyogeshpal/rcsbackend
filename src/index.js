@@ -7,7 +7,9 @@ import devicesRouter from './routes/devices.js';
 import feedbackRouter from './routes/feedback.js';
 import authRouter from './routes/auth.js';
 import uploadRouter from './routes/upload.js';
+import settingsRouter from './routes/settings.js';
 import { startRetryProcessor } from './services/retryProcessor.js';
+import { startScheduler } from './services/scheduler.js';
 
 import http from 'http';
 import { initSocket } from './services/socketService.js';
@@ -34,6 +36,7 @@ app.use('/api/upload', uploadRouter);
 app.use('/api/campaigns', campaignsRouter);
 app.use('/api/devices', devicesRouter);
 app.use('/api/feedback', feedbackRouter);
+app.use('/api/settings', settingsRouter);
 
 // Initialize Socket.IO
 initSocket(server);
@@ -43,6 +46,7 @@ async function start() {
   console.log('[API] MongoDB connected');
 
   startRetryProcessor();
+  startScheduler();
 
   server.listen(config.port, () => {
     console.log(`[API] Server listening on port ${config.port}`);

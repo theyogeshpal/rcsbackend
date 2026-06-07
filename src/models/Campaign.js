@@ -25,6 +25,7 @@ const campaignSchema = new mongoose.Schema(
       pending: { type: Number, default: 0 },
     },
     error: { type: String, default: null },
+    scheduledAt: { type: Date, default: null },
     createdBy: { type: String, default: 'admin' },
   },
   { timestamps: true }

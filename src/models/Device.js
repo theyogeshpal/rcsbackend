@@ -11,6 +11,10 @@ const deviceSchema = new mongoose.Schema(
       completed: { type: Number, default: 0 },
       inProgress: { type: Number, default: 0 },
     },
+    dailyStats: {
+      date: { type: String, default: '' }, // e.g. "YYYY-MM-DD"
+      count: { type: Number, default: 0 }
+    }
   },
   { timestamps: true }
 );

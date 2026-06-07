@@ -23,7 +23,7 @@ export async function dispatchParallel(batches) {
   });
 }
 
-export function buildDevicePayload({ campaignId, text, imageUrl, assignedNumbersList }) {
+export function buildDevicePayload({ campaignId, text, imageUrl, assignedNumbersList, cooldownMs }) {
   // WebSockets can handle complex objects natively, no need to stringify arrays.
   return {
     type: 'CAMPAIGN_EXECUTE',
@@ -31,6 +31,6 @@ export function buildDevicePayload({ campaignId, text, imageUrl, assignedNumbers
     text,
     imageUrl: imageUrl || '',
     assignedNumbersList, // Array
-    cooldownMs: config.cooldownMs,
+    cooldownMs: cooldownMs || config.cooldownMs,
   };
 }
