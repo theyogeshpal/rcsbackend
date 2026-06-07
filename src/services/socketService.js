@@ -23,6 +23,19 @@ subClient.on('message', (channel, message) => {
 export function initSocket(server) {
   io = new Server(server, { cors: { origin: '*' } });
   
+  setInterval(async () => {
+    if (activeSockets.size === 0) return;
+    const deviceIds = Array.from(new Set(activeSockets.values()));
+    try {
+      await Device.updateMany(
+        { deviceId: { $in: deviceIds } },
+        { $set: { lastHeartbeat: new Date(), isActive: true } }
+      );
+    } catch (err) {
+      console.error('[Socket] Periodic heartbeat error:', err);
+    }
+  }, 30000);
+
   io.on('connection', (socket) => {
     console.log(`[Socket] connected: ${socket.id}`);
     
