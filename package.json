@@ -10,6 +10,7 @@
     "worker": "node src/workers/campaignWorker.js"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "bullmq": "^5.34.5",
     "cors": "^2.8.6",
     "dotenv": "^16.6.1",

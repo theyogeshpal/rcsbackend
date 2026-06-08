@@ -5,6 +5,7 @@ import { config } from '../config.js';
 import { processCampaignById } from '../services/campaignProcessor.js';
 import { requireAuth } from '../middleware/auth.js';
 import { Feedback } from '../models/Feedback.js';
+import { Contact } from '../models/Contact.js';
 
 const router = Router();
 
@@ -39,19 +40,37 @@ async function scheduleCampaign(campaignId) {
 
 router.post('/', async (req, res) => {
   try {
-    const { name, text, imageUrl, numbers } = req.body;
-    if (!name || !text || !Array.isArray(numbers) || numbers.length === 0) {
-      return res.status(400).json({ error: 'name, text, and numbers[] are required' });
+    const { name, text, imageUrl, numbers, category } = req.body;
+    if (!name || !text) {
+      return res.status(400).json({ error: 'name and text are required' });
     }
 
-    const normalized = numbers.map((n) => String(n).replace(/\D/g, '')).filter(Boolean);
+    let finalNumbers = [];
+    if (category) {
+      const contacts = await Contact.find({ category }).select('phoneNumber').lean();
+      finalNumbers = contacts.map(c => c.phoneNumber);
+    } else if (Array.isArray(numbers)) {
+      finalNumbers = numbers;
+    }
+
+    if (finalNumbers.length === 0) {
+      return res.status(400).json({ error: 'No numbers provided or found for the category' });
+    }
+
+    const normalized = finalNumbers.map((n) => String(n).replace(/\D/g, '')).filter(Boolean);
+    const uniqueNumbers = [...new Set(normalized)];
+    
+    if (uniqueNumbers.length === 0) {
+      return res.status(400).json({ error: 'No valid numbers found' });
+    }
+
     const campaign = await Campaign.create({
       name,
       text,
       imageUrl: imageUrl || '',
-      numbers: normalized,
+      numbers: uniqueNumbers,
       status: 'queued',
-      stats: { total: normalized.length, sent: 0, failed: 0, pending: normalized.length },
+      stats: { total: uniqueNumbers.length, sent: 0, failed: 0, pending: uniqueNumbers.length },
       createdBy: req.admin?.username || 'admin',
     });
 
