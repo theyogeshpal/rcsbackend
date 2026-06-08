@@ -51,4 +51,18 @@ router.get('/', async (req, res) => {
   }
 });
 
+router.post('/delete-bulk', async (req, res) => {
+  try {
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: 'ids[] is required' });
+    }
+    const result = await Contact.deleteMany({ _id: { $in: ids } });
+    res.json({ success: true, deletedCount: result.deletedCount });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;
