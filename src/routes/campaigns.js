@@ -159,6 +159,29 @@ router.post('/:id/retry', async (req, res) => {
   }
 });
 
+router.post('/:id/relaunch', async (req, res) => {
+  try {
+    const campaign = await Campaign.findById(req.params.id);
+    if (!campaign) return res.status(404).json({ error: 'Campaign not found' });
+
+    const newCampaign = await Campaign.create({
+      name: campaign.name.endsWith(' (Relaunched)') ? campaign.name : `${campaign.name} (Relaunched)`,
+      text: campaign.text,
+      imageUrl: campaign.imageUrl || '',
+      numbers: campaign.numbers,
+      status: 'queued',
+      stats: { total: campaign.numbers.length, sent: 0, failed: 0, pending: campaign.numbers.length },
+      createdBy: req.admin?.username || 'admin',
+    });
+
+    await scheduleCampaign(newCampaign._id);
+    res.status(201).json({ success: true, message: 'Campaign relaunched successfully', newCampaignId: newCampaign._id });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.delete('/:id', async (req, res) => {
   try {
     const campaignId = req.params.id;
