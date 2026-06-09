@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 const deviceSchema = new mongoose.Schema(
   {
     deviceId: { type: String, required: true, unique: true },
+    phoneNumbers: { type: [String], default: [] },
     label: { type: String, default: '' },
     isActive: { type: Boolean, default: true },
     lastHeartbeat: { type: Date, default: Date.now },

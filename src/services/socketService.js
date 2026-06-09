@@ -41,7 +41,7 @@ export function initSocket(server) {
     
     socket.on('register_device', async (data) => {
       // data should contain deviceId from Android
-      const { deviceId, phoneModel } = data;
+      const { deviceId, phoneModel, phoneNumbers } = data;
       if (!deviceId) return;
       
       activeSockets.set(socket.id, deviceId);
@@ -54,7 +54,12 @@ export function initSocket(server) {
       await Device.findOneAndUpdate(
         { deviceId },
         { 
-          $set: { isActive: true, lastHeartbeat: new Date(), phoneModel: phoneModel || 'Unknown' },
+          $set: { 
+            isActive: true, 
+            lastHeartbeat: new Date(), 
+            phoneModel: phoneModel || 'Unknown',
+            ...(phoneNumbers ? { phoneNumbers } : {})
+          },
           $setOnInsert: { createdBy: 'system', label }
         },
         { upsert: true }

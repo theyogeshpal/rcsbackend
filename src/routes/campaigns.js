@@ -89,9 +89,24 @@ router.get('/', async (_req, res) => {
 });
 
 router.get('/:id', async (req, res) => {
-  const campaign = await Campaign.findById(req.params.id);
-  if (!campaign) return res.status(404).json({ error: 'Not found' });
-  res.json(campaign);
+  try {
+    const campaign = await Campaign.findById(req.params.id).lean();
+    if (!campaign) return res.status(404).json({ error: 'Not found' });
+    
+    if (campaign.assignments) {
+      const { Device } = await import('../models/Device.js');
+      for (let a of campaign.assignments) {
+        const d = await Device.findOne({ deviceId: a.deviceId }).select('phoneNumbers').lean();
+        if (d && d.phoneNumbers) {
+          a.phoneNumbers = d.phoneNumbers;
+        }
+      }
+    }
+    
+    res.json(campaign);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 router.get('/:id/logs', async (req, res) => {

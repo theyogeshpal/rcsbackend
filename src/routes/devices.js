@@ -16,7 +16,7 @@ async function resolveDeviceLabel(deviceId, requestedLabel) {
 
 router.post('/register', async (req, res) => {
   try {
-    const { deviceId, fcmToken, label } = req.body;
+    const { deviceId, fcmToken, label, phoneNumbers } = req.body;
     if (!deviceId || !fcmToken) {
       return res.status(400).json({ error: 'deviceId and fcmToken required' });
     }
@@ -29,6 +29,7 @@ router.post('/register', async (req, res) => {
         deviceId,
         fcmToken,
         label: finalLabel,
+        phoneNumbers,
         isActive: true,
         lastHeartbeat: new Date(),
       },
