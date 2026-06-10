@@ -10,7 +10,7 @@ const router = Router();
 
 router.post('/', async (req, res) => {
   try {
-    const { campaignId, deviceId, phoneNumber, status, error, durationMs } = req.body;
+    const { campaignId, deviceId, phoneNumber, senderNumber, status, error, durationMs } = req.body;
     if (!campaignId || !deviceId || !phoneNumber || !status) {
       return res.status(400).json({ error: 'campaignId, deviceId, phoneNumber, status required' });
     }
@@ -21,6 +21,7 @@ router.post('/', async (req, res) => {
       campaignId,
       deviceId,
       phoneNumber: normalized,
+      senderNumber: senderNumber || 'Unknown',
       status,
       error: error || null,
       durationMs: durationMs || 0,
