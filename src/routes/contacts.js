@@ -43,8 +43,19 @@ router.get('/categories', async (req, res) => {
 
 router.get('/', async (req, res) => {
   try {
-    const contacts = await Contact.find().sort({ createdAt: -1 }).limit(100).lean();
-    res.json(contacts);
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 15;
+    const skip = (page - 1) * limit;
+
+    const total = await Contact.countDocuments();
+    const contacts = await Contact.find().sort({ createdAt: -1 }).skip(skip).limit(limit).lean();
+    
+    res.json({
+      contacts,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit)
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
