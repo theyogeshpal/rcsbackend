@@ -136,3 +136,88 @@ export async function processCampaignById(campaignId) {
 
   return { campaignId: String(campaign._id), assignments: assignments.length, dispatchResults };
 }
+
+export async function redistributeAbortedNumbers(campaignId, failingDeviceId, unprocessedNumbers) {
+  if (!unprocessedNumbers || unprocessedNumbers.length === 0) return;
+
+  const campaign = await Campaign.findById(campaignId);
+  if (!campaign) return;
+
+  const failingAssignment = campaign.assignments.find(a => a.deviceId === failingDeviceId);
+  if (failingAssignment && failingAssignment.numbers) {
+    failingAssignment.numbers = failingAssignment.numbers.filter(n => !unprocessedNumbers.includes(n));
+  }
+
+  let settings = await GlobalSettings.findById('global');
+  const cutoff = new Date(Date.now() - config.deviceHeartbeatTtlMs);
+  const rawDevices = await Device.find({
+    isActive: true,
+    lastHeartbeat: { $gte: cutoff },
+    deviceId: { $ne: failingDeviceId }
+  });
+
+  const todayStr = new Date().toISOString().split('T')[0];
+  const devices = [];
+  for (const device of rawDevices) {
+    let stats = device.dailyStats;
+    if (!stats || stats.date !== todayStr) {
+      stats = { date: todayStr, count: 0 };
+    }
+    const capacity = Math.max(0, (settings?.dailyLimitPerDevice || 500) - stats.count);
+    if (capacity > 0) {
+      devices.push(device);
+    }
+  }
+
+  const active = loadBalancer.syncFromDevices(devices);
+  if (active.length === 0) {
+    campaign.stats.failed += unprocessedNumbers.length;
+    campaign.stats.pending -= unprocessedNumbers.length;
+    campaign.error = 'No active devices left to redistribute numbers to.';
+    if (campaign.stats.pending <= 0) campaign.status = 'failed';
+    await campaign.save();
+    return;
+  }
+
+  const buckets = loadBalancer.distribute(unprocessedNumbers, active.map((d) => d.deviceId));
+  const deviceById = new Map(active.map((d) => [d.deviceId, d]));
+  const fcmBatches = [];
+
+  for (const [deviceId, numbers] of buckets) {
+    if (numbers.length === 0) continue;
+    const device = deviceById.get(deviceId);
+    
+    let existingAssignment = campaign.assignments.find(a => a.deviceId === deviceId);
+    if (existingAssignment) {
+      existingAssignment.numbers.push(...numbers);
+    } else {
+      campaign.assignments.push({ deviceId, numbers, dispatchedAt: new Date() });
+    }
+
+    fcmBatches.push({
+      deviceId,
+      payload: buildDevicePayload({
+        campaignId: String(campaign._id),
+        text: campaign.text,
+        imageUrl: campaign.imageUrl,
+        assignedNumbersList: numbers,
+        cooldownMs: settings?.cooldownMs || 8000,
+      }),
+    });
+
+    device.dailyStats.count += numbers.length;
+    await Device.updateOne(
+      { deviceId },
+      {
+        $inc: {
+          'workload.assigned': numbers.length,
+          'workload.inProgress': numbers.length,
+        },
+        $set: { dailyStats: device.dailyStats }
+      }
+    );
+  }
+
+  await dispatchParallel(fcmBatches);
+  await campaign.save();
+}

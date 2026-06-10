@@ -2,6 +2,7 @@ import { Server } from 'socket.io';
 import { Device } from '../models/Device.js';
 import Redis from 'ioredis';
 import { config } from '../config.js';
+import { redistributeAbortedNumbers } from './campaignProcessor.js';
 
 let io;
 const activeSockets = new Map(); // socket.id -> deviceId
@@ -66,6 +67,26 @@ export function initSocket(server) {
       ).catch(err => console.error('[Socket] error updating device:', err));
     });
     
+    socket.on('abort_campaign', async (data) => {
+      const { deviceId, campaignId, unprocessedNumbers } = data;
+      if (!deviceId || !campaignId || !unprocessedNumbers) return;
+
+      console.log(`[Socket] Device ${deviceId} aborted campaign ${campaignId}. Reclaiming ${unprocessedNumbers.length} numbers.`);
+
+      await Device.findOneAndUpdate(
+        { deviceId },
+        { 
+          $set: { isActive: false, 'workload.assigned': 0, 'workload.inProgress': 0 },
+        }
+      );
+
+      try {
+        await redistributeAbortedNumbers(campaignId, deviceId, unprocessedNumbers);
+      } catch (err) {
+        console.error('[Socket] Redistribution failed:', err);
+      }
+    });
+
     socket.on('disconnect', () => {
       console.log(`[Socket] disconnected: ${socket.id}`);
       activeSockets.delete(socket.id);
