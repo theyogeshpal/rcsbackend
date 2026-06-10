@@ -10,6 +10,7 @@ import uploadRouter from './routes/upload.js';
 import settingsRouter from './routes/settings.js';
 import contactsRouter from './routes/contacts.js';
 import templatesRouter from './routes/templates.js';
+import statsRouter from './routes/stats.js';
 import { startRetryProcessor } from './services/retryProcessor.js';
 import { startScheduler } from './services/scheduler.js';
 
@@ -41,6 +42,7 @@ app.use('/api/feedback', feedbackRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/contacts', contactsRouter);
 app.use('/api/templates', templatesRouter);
+app.use('/api/stats', statsRouter);
 
 // Initialize Socket.IO
 initSocket(server);
