@@ -80,4 +80,20 @@ router.delete('/:deviceId', requireAuth, async (req, res) => {
   }
 });
 
+router.patch('/:deviceId', requireAuth, async (req, res) => {
+  try {
+    const { deviceId } = req.params;
+    const { label } = req.body;
+    const device = await Device.findOneAndUpdate(
+      { deviceId },
+      { label },
+      { new: true }
+    );
+    if (!device) return res.status(404).json({ error: 'Device not found' });
+    res.json(device);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;
