@@ -30,7 +30,15 @@ router.get('/', async (req, res) => {
           _id: null,
           totalSent: { $sum: "$stats.sent" },
           totalFailed: { $sum: "$stats.failed" },
-          totalPending: { $sum: "$stats.pending" }
+          totalPending: { 
+            $sum: {
+              $cond: [
+                { $in: ["$status", ["completed", "failed"]] },
+                0,
+                "$stats.pending"
+              ]
+            }
+          }
         }
       }
     ]);
