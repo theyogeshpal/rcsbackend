@@ -36,6 +36,24 @@ export function startScheduler() {
           }
         }
       }
+
+      // Sweep campaigns stuck in dispatched for more than 1 hour
+      const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+      const stuckCampaigns = await Campaign.find({
+        status: 'dispatched',
+        updatedAt: { $lte: oneHourAgo }
+      });
+
+      for (const c of stuckCampaigns) {
+        if (c.stats && c.stats.pending > 0) {
+          console.log(`[Scheduler] Marking stuck campaign ${c._id} as failed.`);
+          c.stats.failed = (c.stats.failed || 0) + c.stats.pending;
+          c.stats.pending = 0;
+          c.status = 'failed';
+          c.error = 'Campaign timed out while waiting for device feedback.';
+          await c.save();
+        }
+      }
     } catch (err) {
       console.error('[Scheduler] Error checking scheduled campaigns:', err);
     }
